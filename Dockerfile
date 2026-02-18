@@ -79,15 +79,15 @@ WORKDIR /app
 COPY package*.json ./
 # We need ALL dependencies to run the build command
 RUN npm ci --only=production
-COPY . .
-RUN npm run build
+# Copy the entire codebase to the working directory
+COPY . /app/
 
-# --- Stage 2: Production Stage ---
-FROM nginx:stable-alpine
-# Copy the build output to Nginx's html folder
-COPY --from=builder /app/build /usr/share/nginx/html
+# Give ownership of the working directory to the non-root user
+RUN chown -R nodejs:nodejs /app
 
-# Expose port 80 (Nginx default)
-EXPOSE 80
+# Switch to the non-root user
+USER nodejs
 
-CMD ["nginx", "-g", "daemon off;"]
+# Expose the port your app runs on
+EXPOSE 3000
+
