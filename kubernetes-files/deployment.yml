@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: hotstar
-        image: 2swapna/hotstar:1.0.0-19
+        image: 2swapna/hotstar:1.0.0-23
         ports:
         - containerPort: 3000 # Port your application listens on
