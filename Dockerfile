@@ -47,47 +47,42 @@
 # # Expose the port your app runs on
 # EXPOSE 3000
 
-# # Use lightweight Node.js Alpine image
-# FROM node:20-alpine
-
-# # Set working directory
-# WORKDIR /app
-
-# # Copy only package files first to leverage Docker cache
-# COPY package*.json ./
-
-# # Install dependencies
-# RUN npm ci --only=production
-
-# # Copy app source code
-# COPY . .
-
-# # Expose app port (change if your app uses a different port)
-# EXPOSE 3000
-
-# # Start the application
-# CMD ["node", "index.js"]
-
-# # # Define the command to start your application
-# CMD ["npm", "start"]
-
-
-# ----------------------------------------------------------------------------------
-# --- Stage 1: Build Stage ---
 FROM node:20-alpine AS builder
+
 WORKDIR /app
+
+# Copy package files first to leverage Docker cache
 COPY package*.json ./
-# We need ALL dependencies to run the build command
-RUN npm ci --only=production
-# Copy the entire codebase to the working directory
-COPY . /app/
 
-# Give ownership of the working directory to the non-root user
-RUN chown -R nodejs:nodejs /app
+# Install ALL dependencies
+# Note: We run this as root (default) so it has permission to write to /app
+RUN npm install
 
-# Switch to the non-root user
-USER nodejs
+# Copy the rest of the source code
+COPY . .
 
-# Expose the port your app runs on
+# --- Stage 2: Production Stage ---
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Set production environment
+ENV NODE_ENV=production
+
+# 1. Create the user and group first
+RUN addgroup -S nodejs && adduser -S nodeapp -G nodejs
+
+# 2. Copy only what is needed from the builder stage
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/ .
+
+# 3. Change ownership of the /app directory to our new user
+RUN chown -R nodeapp:nodejs /app
+
+# 4. Switch to the non-root user
+USER nodeapp
+
 EXPOSE 3000
 
+CMD ["npm", "start"]
