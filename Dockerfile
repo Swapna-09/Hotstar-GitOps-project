@@ -46,43 +46,21 @@
 
 # # Expose the port your app runs on
 # EXPOSE 3000
-
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files first to leverage Docker cache
+# Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies
-# Note: We run this as root (default) so it has permission to write to /app
+# Install ALL dependencies (don't use --production for react-scripts)
 RUN npm install
 
-# Copy the rest of the source code
+# Copy the rest of the code
 COPY . .
 
-# --- Stage 2: Production Stage ---
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
-# Set production environment
-ENV NODE_ENV=production
-
-# 1. Create the user and group first
-RUN addgroup -S nodejs && adduser -S nodeapp -G nodejs
-
-# 2. Copy only what is needed from the builder stage
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/ .
-
-# 3. Change ownership of the /app directory to our new user
-RUN chown -R nodeapp:nodejs /app
-
-# 4. Switch to the non-root user
-USER nodeapp
-
+# Expose the React default port
 EXPOSE 3000
 
+# Start the app
 CMD ["npm", "start"]
