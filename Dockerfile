@@ -78,7 +78,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 # We need ALL dependencies to run the build command
-RUN npm install
+RUN npm ci --only=production
 COPY . .
 RUN npm run build
 
