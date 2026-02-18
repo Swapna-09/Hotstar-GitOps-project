@@ -47,27 +47,47 @@
 # # Expose the port your app runs on
 # EXPOSE 3000
 
-# Use lightweight Node.js Alpine image
-FROM node:20-alpine
+# # Use lightweight Node.js Alpine image
+# FROM node:20-alpine
 
-# Set working directory
+# # Set working directory
+# WORKDIR /app
+
+# # Copy only package files first to leverage Docker cache
+# COPY package*.json ./
+
+# # Install dependencies
+# RUN npm ci --only=production
+
+# # Copy app source code
+# COPY . .
+
+# # Expose app port (change if your app uses a different port)
+# EXPOSE 3000
+
+# # Start the application
+# CMD ["node", "index.js"]
+
+# # # Define the command to start your application
+# CMD ["npm", "start"]
+
+
+# ----------------------------------------------------------------------------------
+# --- Stage 1: Build Stage ---
+FROM node:20-alpine AS builder
 WORKDIR /app
-
-# Copy only package files first to leverage Docker cache
 COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy app source code
+# We need ALL dependencies to run the build command
+RUN npm install
 COPY . .
+RUN npm run build
 
-# Expose app port (change if your app uses a different port)
-EXPOSE 3000
+# --- Stage 2: Production Stage ---
+FROM nginx:stable-alpine
+# Copy the build output to Nginx's html folder
+COPY --from=builder /app/build /usr/share/nginx/html
 
-# Start the application
-CMD ["node", "index.js"]
+# Expose port 80 (Nginx default)
+EXPOSE 80
 
-# # Define the command to start your application
-CMD ["npm", "start"]
-
+CMD ["nginx", "-g", "daemon off;"]
