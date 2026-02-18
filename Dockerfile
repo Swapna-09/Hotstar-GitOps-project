@@ -69,5 +69,5 @@ EXPOSE 3000
 CMD ["node", "index.js"]
 
 # # Define the command to start your application
-# CMD ["npm", "start"]
+CMD ["npm", "start"]
 
