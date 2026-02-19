@@ -1,5 +1,89 @@
 pipeline {
-    agent any 
+//     agent any 
+
+//     stages {
+//         stage('Cleaning Workspace') {
+//             steps {
+//                 cleanWs()
+//             }
+//         }
+//         stage('Checkout from Git') {
+//             steps {
+//                 git branch: 'master', url: 'https://github.com/arumullayaswanth/Hotstar-GitOps-project.git'
+//             }
+//         }
+//         stage("List Files") {
+//             steps {
+//                 sh 'ls -la'
+//             }
+//         }
+//         stage("Docker Image Build") {
+//             steps {
+//                 script {
+//                     sh 'docker system prune -f'
+//                     sh 'docker container prune -f'
+//                     sh 'docker build -t hotstar .'
+//                 }
+//             }
+//         }
+//         stage("ECR Image Pushing") {
+//             steps {
+//                 script {
+//                     sh '''
+//                     #Retrieve an authentication token and authenticate your Docker client to your registry. Use the AWS CLI:
+//                     aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 884394270268.dkr.ecr.us-east-1.amazonaws.com
+
+//                     #After the build completes, tag your image so you can push the image to this repository:
+//                     docker tag hotstar:latest 884394270268.dkr.ecr.us-east-1.amazonaws.com/hotstar:${BUILD_NUMBER}
+
+//                     #Run the following command to push this image to your newly created AWS repository:
+//                     docker push 884394270268.dkr.ecr.us-east-1.amazonaws.com/hotstar:${BUILD_NUMBER}
+//                     '''
+//                 }
+//             }
+//         }
+//         stage('Update Deployment file') {
+//             environment {
+//                 GIT_REPO_NAME = "Hotstar-GitOps-project"
+//                 GIT_EMAIL = "Yaswanth.arumulla@gmail.com"
+//                 GIT_USER_NAME = "arumullayaswanth"
+//                 IMAGE_NAME = "hotstar"
+//                 REPO_URL = "884394270268.dkr.ecr.us-east-1.amazonaws.com/hotstar"
+//                 YAML_FILE = "deployment.yml"
+//             }
+//             steps {
+//                 dir('kubernetes-files') {
+//                     withCredentials([string(credentialsId: 'my-git-pattoken', variable: 'git_token')]) {
+//                         sh '''
+//                             git config user.email "${GIT_EMAIL}"
+//                             git config user.name "${GIT_USER_NAME}"
+//                             BUILD_NUMBER=${BUILD_NUMBER}
+//                             echo $BUILD_NUMBER
+
+//                             # push this image to your git hub
+//                             sed -i "s#image:.*#image: ${REPO_URL}:$BUILD_NUMBER#g" ${YAML_FILE}
+//                             git add .
+//                             git commit -m "Update ${IMAGE_NAME} Image to version \${BUILD_NUMBER}"
+//                             git push https://${git_token}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
+        
+//                         '''
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
+
+pipeline {
+    agent any
+    environment {
+	    APP_NAME = "hotstar"
+            RELEASE = "1.0.0"
+            DOCKER_USER = "2swapna"
+            DOCKER_PASS = 'dockerhub'
+            IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
+            IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+    }    
 
     stages {
         stage('Cleaning Workspace') {
@@ -9,7 +93,7 @@ pipeline {
         }
         stage('Checkout from Git') {
             steps {
-                git branch: 'master', url: 'https://github.com/arumullayaswanth/Hotstar-GitOps-project.git'
+                git branch: 'master', url: 'https://github.com/Swapna-09/Hotstar-GitOps-project.git'
             }
         }
         stage("List Files") {
@@ -17,59 +101,75 @@ pipeline {
                 sh 'ls -la'
             }
         }
-        stage("Docker Image Build") {
+        stage("SonarQube Analysis") {
             steps {
                 script {
-                    sh 'docker system prune -f'
-                    sh 'docker container prune -f'
-                    sh 'docker build -t hotstar .'
-                }
-            }
-        }
-        stage("ECR Image Pushing") {
-            steps {
-                script {
-                    sh '''
-                    #Retrieve an authentication token and authenticate your Docker client to your registry. Use the AWS CLI:
-                    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 884394270268.dkr.ecr.us-east-1.amazonaws.com
-
-                    #After the build completes, tag your image so you can push the image to this repository:
-                    docker tag hotstar:latest 884394270268.dkr.ecr.us-east-1.amazonaws.com/hotstar:${BUILD_NUMBER}
-
-                    #Run the following command to push this image to your newly created AWS repository:
-                    docker push 884394270268.dkr.ecr.us-east-1.amazonaws.com/hotstar:${BUILD_NUMBER}
-                    '''
-                }
-            }
-        }
-        stage('Update Deployment file') {
-            environment {
-                GIT_REPO_NAME = "Hotstar-GitOps-project"
-                GIT_EMAIL = "Yaswanth.arumulla@gmail.com"
-                GIT_USER_NAME = "arumullayaswanth"
-                IMAGE_NAME = "hotstar"
-                REPO_URL = "884394270268.dkr.ecr.us-east-1.amazonaws.com/hotstar"
-                YAML_FILE = "deployment.yml"
-            }
-            steps {
-                dir('kubernetes-files') {
-                    withCredentials([string(credentialsId: 'my-git-pattoken', variable: 'git_token')]) {
+                    withSonarQubeEnv('sonarqube') { 
+                        // Run SonarScanner (must be installed on the node)
                         sh '''
-                            git config user.email "${GIT_EMAIL}"
-                            git config user.name "${GIT_USER_NAME}"
-                            BUILD_NUMBER=${BUILD_NUMBER}
-                            echo $BUILD_NUMBER
-
-                            # push this image to your git hub
-                            sed -i "s#image:.*#image: ${REPO_URL}:$BUILD_NUMBER#g" ${YAML_FILE}
-                            git add .
-                            git commit -m "Update ${IMAGE_NAME} Image to version \${BUILD_NUMBER}"
-                            git push https://${git_token}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
-        
+                        sonar-scanner \
+                        -Dsonar.projectKey=hotstar-app \
+                        -Dsonar.sources=src \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_AUTH_TOKEN
                         '''
                     }
                 }
             }
         }
+ 
+        stage("Build & Push Docker Image") {
+            steps {
+                script {
+                    docker.withRegistry('',DOCKER_PASS) {
+                        docker_image = docker.build "${IMAGE_NAME}"
+                    }
+
+                    docker.withRegistry('',DOCKER_PASS) {
+                        docker_image.push("${IMAGE_TAG}")
+                        docker_image.push('latest')
+                    }
+                }
+            }
+       }       
+       stage ('Cleanup Artifacts') {
+           steps {
+               script {
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker rmi ${IMAGE_NAME}:latest"
+               }
+          }
+       } 
+        stage("Update the Deployment Tags") {
+            steps {
+                // Use dir to switch context safely
+                dir('kubernetes-files') {
+                    sh """
+                        ls -la  # Useful for debugging to see if the file exists
+                        cat deployment.yml
+                        sed -i 's|${IMAGE_NAME}:.*|${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yml
+                        cat deployment.yml
+                    """
+                }
+            }
+        }                      
+        stage("Push the changed deployment file to Git") {
+            steps {
+                // Switch into the folder where deployment.yml actually lives
+                dir('kubernetes-files') {
+                    sh """
+                        git config --global user.name "Swapna-09"
+                        git config --global user.email "Swapna-09@gmail.com"
+                        git add deployment.yml
+                        git commit -m "Updated Deployment Manifest to ${IMAGE_TAG}" || echo "No changes to commit"
+                    """
+                    
+                    withCredentials([gitUsernamePassword(credentialsId: 'github', gitToolName: 'Default')]) {
+                        // Use the HTTPS URL of the repo (don't include /tree/ or subfolders in the URL)
+                        sh "git push https://github.com/Swapna-09/Hotstar-GitOps-project.git master"
+                    }
+                }
+            }
+        }		
     }
 }
